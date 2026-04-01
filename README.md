@@ -41,3 +41,8 @@ The project includes the following tables:
    ```sql
    CREATE DATABASE supply_chain_db;
    USE supply_chain_db;
+
+## 👨‍💻 Author
+
+**Deepak**  
+B.Tech CSE Student | DBMS Project
