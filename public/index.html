@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Supply Chain Optimization</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #0d1117;
+    --surface:  #161b22;
+    --border:   #30363d;
+    --accent:   #58a6ff;
+    --accent2:  #3fb950;
+    --warn:     #f78166;
+    --yellow:   #e3b341;
+    --text:     #e6edf3;
+    --muted:    #8b949e;
+    --radius:   8px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: -0.3px;
+  }
+  header h1 span { color: var(--muted); font-weight: 400; }
+  #db-status {
+    margin-left: auto;
+    font-size: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  #db-status.ok  { color: var(--accent2); border-color: var(--accent2); }
+  #db-status.err { color: var(--warn);    border-color: var(--warn); }
+
+  .layout { display: flex; min-height: calc(100vh - 56px); }
+
+  nav {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 16px 0;
+  }
+  nav .section-label {
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 1.2px;
+    color: var(--muted);
+    padding: 12px 20px 6px;
+    text-transform: uppercase;
+  }
+  nav button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 20px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13.5px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+  }
+  nav button:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  nav button.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: rgba(88,166,255,0.08);
+    font-weight: 500;
+  }
+  nav button .icon { font-size: 15px; width: 18px; text-align: center; }
+
+  main {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .page-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .page-header p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .card h3 {
+    font-size: 13px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--muted);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 140px; }
+  .form-group label { font-size: 12px; color: var(--muted); font-weight: 500; }
+  input, select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  select option { background: var(--surface); }
+
+  .btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #0d1117; }
+  .btn-primary:hover { background: #79c0ff; }
+  .btn-danger  { background: transparent; color: var(--warn); border: 1px solid var(--warn); font-size: 12px; padding: 4px 10px; }
+  .btn-danger:hover  { background: rgba(247,129,102,0.1); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    color: var(--muted);
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(48,54,61,0.5);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .empty { text-align: center; color: var(--muted); padding: 30px; font-size: 13px; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .badge-green  { background: rgba(63,185,80,0.15);  color: var(--accent2); }
+  .badge-blue   { background: rgba(88,166,255,0.15); color: var(--accent); }
+  .badge-yellow { background: rgba(227,179,65,0.15); color: var(--yellow); }
+  .badge-red    { background: rgba(247,129,102,0.15);color: var(--warn); }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+  .stat-card .label { font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .stat-card .value { font-size: 28px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; }
+  .stat-card.blue  .value { color: var(--accent); }
+  .stat-card.green .value { color: var(--accent2); }
+  .stat-card.warn  .value { color: var(--warn); }
+  .stat-card.yellow .value { color: var(--yellow); }
+
+  .analytics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 900px) { .analytics-grid { grid-template-columns: 1fr; } }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .bar-label { min-width: 120px; font-size: 12px; color: var(--muted); }
+  .bar-track {
+    flex: 1;
+    height: 18px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+  }
+  .bar-val { min-width: 60px; text-align: right; font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--text); }
+
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 13px;
+    color: var(--text);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.25s;
+    pointer-events: none;
+    z-index: 999;
+    max-width: 280px;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.success { border-color: var(--accent2); color: var(--accent2); }
+  #toast.error   { border-color: var(--warn);    color: var(--warn); }
+
+  .qty-low { color: var(--warn); font-weight: 600; }
+  .qty-ok  { color: var(--accent2); }
+
+  code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    background: rgba(255,255,255,0.07);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--yellow);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⛓ Supply Chain <span>/ Optimization DB</span></h1>
+  <div id="db-status">● checking...</div>
+</header>
+
+<div class="layout">
+
+  <nav>
+    <div class="section-label">Overview</div>
+    <button class="active" onclick="goTo('dashboard')" data-page="dashboard"><span class="icon">📊</span> Dashboard</button>
+    <button onclick="goTo('analytics')" data-page="analytics"><span class="icon">🔍</span> Analytics</button>
+
+    <div class="section-label">Tables</div>
+    <button onclick="goTo('suppliers')" data-page="suppliers"><span class="icon">🏭</span> Suppliers</button>
+    <button onclick="goTo('manufacturers')" data-page="manufacturers"><span class="icon">🔧</span> Manufacturers</button>
+    <button onclick="goTo('distributors')" data-page="distributors"><span class="icon">🚛</span> Distributors</button>
+    <button onclick="goTo('products')" data-page="products"><span class="icon">📦</span> Products</button>
+    <button onclick="goTo('inventory')" data-page="inventory"><span class="icon">🗄️</span> Inventory</button>
+    <button onclick="goTo('orders')" data-page="orders"><span class="icon">🛒</span> Orders</button>
+    <button onclick="goTo('logistics')" data-page="logistics"><span class="icon">✈️</span> Logistics</button>
+  </nav>
+
+  <main>
+
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <h2>Dashboard</h2>
+          <p>Live overview of the supply chain database</p>
+        </div>
+        <button class="btn btn-primary" onclick="loadDashboard()">↻ Refresh</button>
+      </div>
+
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card blue"><div class="label">Suppliers</div><div class="value" id="stat-suppliers">—</div></div>
+        <div class="stat-card green"><div class="label">Products</div><div class="value" id="stat-products">—</div></div>
+        <div class="stat-card yellow"><div class="label">Orders</div><div class="value" id="stat-orders">—</div></div>
+        <div class="stat-card warn"><div class="label">Low Stock</div><div class="value" id="stat-lowstock">—</div></div>
+      </div>
+
+      <div class="card">
+        <h3>⚠ Low Stock Alert <code>quantity &lt; 50</code></h3>
+        <div class="table-wrap">
+          <table id="tbl-lowstock">
+            <thead><tr><th>Product</th><th>Quantity</th><th>Location</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>📋 Order Fulfillment Status</h3>
+        <div class="table-wrap">
+          <table id="tbl-fulfillment">
+            <thead><tr><th>Order#</th><th>Product</th><th>Distributor</th><th>Qty</th><th>Date</th><th>Transport</th><th>Cost</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-analytics">
+      <div class="page-header">
+        <div><h2>Analytics</h2><p>SQL query results for supply chain optimization</p></div>
+        <button class="btn btn-primary" onclick="loadAnalytics()">↻ Refresh</button>
+      </div>
+
+      <div class="analytics-grid">
+        <div class="card">
+          <h3>📦 Orders by Distributor</h3>
+          <div id="chart-dist"></div>
+        </div>
+        <div class="card">
+          <h3>🚚 Transport Cost Analysis</h3>
+          <div id="chart-transport"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>SQL Queries Used</h3>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">These are the exact queries from the project PDF running against your database:</p>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);line-height:1.6;">
+            <span style="color:var(--accent);">-- Low Stock Check</span><br>
+            <span style="color:var(--yellow);">SELECT</span> p.name, i.quantity <span style="color:var(--yellow);">FROM</span> inventory i<br>
+            <span style="color:var(--yellow);">JOIN</span> products p <span style="color:var(--yellow);">ON</span> i.product_id = p.product_id<br>
+            <span style="color:var(--yellow);">WHERE</span> i.quantity &lt; 50;
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);line-height:1.6;">
+            <span style="color:var(--accent);">-- Total Orders by Distributors</span><br>
+            <span style="color:var(--yellow);">SELECT</span> d.name, <span style="color:var(--accent2);">SUM</span>(o.quantity) <span style="color:var(--yellow);">AS</span> total_orders<br>
+            <span style="color:var(--yellow);">FROM</span> orders o <span style="color:var(--yellow);">JOIN</span> distributors d <span style="color:var(--yellow);">ON</span> o.distributor_id = d.distributor_id<br>
+            <span style="color:var(--yellow);">GROUP BY</span> d.name;
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);line-height:1.6;">
+            <span style="color:var(--accent);">-- Transportation Cost Analysis</span><br>
+            <span style="color:var(--yellow);">SELECT</span> transport_mode, <span style="color:var(--accent2);">SUM</span>(cost) <span style="color:var(--yellow);">AS</span> total_cost<br>
+            <span style="color:var(--yellow);">FROM</span> logistics<br>
+            <span style="color:var(--yellow);">GROUP BY</span> transport_mode;
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-suppliers">
+      <div class="page-header">
+        <div><h2>Suppliers</h2><p>Manage supplier records</p></div>
+      </div>
+      <div class="card">
+        <h3>Add Supplier</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Name *</label><input id="sup-name" placeholder="Supplier name"/></div>
+          <div class="form-group"><label>Contact</label><input id="sup-contact" placeholder="Phone number"/></div>
+          <div class="form-group"><label>City</label><input id="sup-city" placeholder="City"/></div>
+        </div>
+        <button class="btn btn-primary" onclick="addSupplier()">+ Add Supplier</button>
+      </div>
+      <div class="card">
+        <h3>All Suppliers</h3>
+        <div class="table-wrap">
+          <table id="tbl-suppliers">
+            <thead><tr><th>ID</th><th>Name</th><th>Contact</th><th>City</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-manufacturers">
+      <div class="page-header">
+        <div><h2>Manufacturers</h2><p>Manage manufacturer records</p></div>
+      </div>
+      <div class="card">
+        <h3>Add Manufacturer</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Name *</label><input id="mfr-name" placeholder="Manufacturer name"/></div>
+          <div class="form-group"><label>Location</label><input id="mfr-location" placeholder="Location / City"/></div>
+        </div>
+        <button class="btn btn-primary" onclick="addManufacturer()">+ Add Manufacturer</button>
+      </div>
+      <div class="card">
+        <h3>All Manufacturers</h3>
+        <div class="table-wrap">
+          <table id="tbl-manufacturers">
+            <thead><tr><th>ID</th><th>Name</th><th>Location</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-distributors">
+      <div class="page-header">
+        <div><h2>Distributors</h2><p>Manage distributor records</p></div>
+      </div>
+      <div class="card">
+        <h3>Add Distributor</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Name *</label><input id="dist-name" placeholder="Distributor name"/></div>
+          <div class="form-group"><label>Region</label><input id="dist-region" placeholder="Region covered"/></div>
+        </div>
+        <button class="btn btn-primary" onclick="addDistributor()">+ Add Distributor</button>
+      </div>
+      <div class="card">
+        <h3>All Distributors</h3>
+        <div class="table-wrap">
+          <table id="tbl-distributors">
+            <thead><tr><th>ID</th><th>Name</th><th>Region</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-products">
+      <div class="page-header">
+        <div><h2>Products</h2><p>Manage product catalogue</p></div>
+      </div>
+      <div class="card">
+        <h3>Add Product</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Product Name *</label><input id="prod-name" placeholder="Product name"/></div>
+          <div class="form-group"><label>Manufacturer</label>
+            <select id="prod-mfr"><option value="">— Select —</option></select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addProduct()">+ Add Product</button>
+      </div>
+      <div class="card">
+        <h3>All Products</h3>
+        <div class="table-wrap">
+          <table id="tbl-products">
+            <thead><tr><th>ID</th><th>Name</th><th>Manufacturer</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-inventory">
+      <div class="page-header">
+        <div><h2>Inventory</h2><p>Track stock levels by location</p></div>
+      </div>
+      <div class="card">
+        <h3>Add Inventory Record</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Product</label>
+            <select id="inv-prod"><option value="">— Select —</option></select>
+          </div>
+          <div class="form-group"><label>Quantity *</label><input id="inv-qty" type="number" min="0" placeholder="0"/></div>
+          <div class="form-group"><label>Location</label><input id="inv-loc" placeholder="Warehouse name"/></div>
+        </div>
+        <button class="btn btn-primary" onclick="addInventory()">+ Add Record</button>
+      </div>
+      <div class="card">
+        <h3>Inventory Levels</h3>
+        <div class="table-wrap">
+          <table id="tbl-inventory">
+            <thead><tr><th>ID</th><th>Product</th><th>Quantity</th><th>Location</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-orders">
+      <div class="page-header">
+        <div><h2>Orders</h2><p>Place and track orders</p></div>
+      </div>
+      <div class="card">
+        <h3>Place New Order</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Product</label>
+            <select id="ord-prod"><option value="">— Select —</option></select>
+          </div>
+          <div class="form-group"><label>Distributor</label>
+            <select id="ord-dist"><option value="">— Select —</option></select>
+          </div>
+          <div class="form-group"><label>Quantity *</label><input id="ord-qty" type="number" min="1" placeholder="0"/></div>
+          <div class="form-group"><label>Order Date *</label><input id="ord-date" type="date"/></div>
+        </div>
+        <button class="btn btn-primary" onclick="addOrder()">+ Place Order</button>
+      </div>
+      <div class="card">
+        <h3>All Orders</h3>
+        <div class="table-wrap">
+          <table id="tbl-orders">
+            <thead><tr><th>ID</th><th>Product</th><th>Distributor</th><th>Qty</th><th>Date</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-logistics">
+      <div class="page-header">
+        <div><h2>Logistics</h2><p>Track shipments and delivery status</p></div>
+      </div>
+      <div class="card">
+        <h3>Add Logistics Entry</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Order</label>
+            <select id="log-order"><option value="">— Select —</option></select>
+          </div>
+          <div class="form-group"><label>Transport Mode</label>
+            <select id="log-mode">
+              <option value="Truck">Truck</option>
+              <option value="Rail">Rail</option>
+              <option value="Air">Air</option>
+              <option value="Ship">Ship</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Cost (₹)</label><input id="log-cost" type="number" min="0" placeholder="0"/></div>
+          <div class="form-group"><label>Delivery Status</label>
+            <select id="log-status">
+              <option value="Pending">Pending</option>
+              <option value="In Transit">In Transit</option>
+              <option value="Delivered">Delivered</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addLogistics()">+ Add Entry</button>
+      </div>
+      <div class="card">
+        <h3>All Logistics</h3>
+        <div class="table-wrap">
+          <table id="tbl-logistics">
+            <thead><tr><th>ID</th><th>Order#</th><th>Product</th><th>Mode</th><th>Cost</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = '';
+
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.className = '', 2800);
+}
+
+function goTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelector(`nav button[data-page="${page}"]`).classList.add('active');
+  if (page === 'dashboard')      loadDashboard();
+  if (page === 'analytics')      loadAnalytics();
+  if (page === 'suppliers')      loadSuppliers();
+  if (page === 'manufacturers')  loadManufacturers();
+  if (page === 'distributors')   loadDistributors();
+  if (page === 'products')       { loadProducts(); populateSelect('prod-mfr', '/api/manufacturers', 'manufacturer_id', 'name'); }
+  if (page === 'inventory')      { loadInventory(); populateSelect('inv-prod', '/api/products', 'product_id', 'name'); }
+  if (page === 'orders')         { loadOrders(); populateSelect('ord-prod', '/api/products', 'product_id', 'name'); populateSelect('ord-dist', '/api/distributors', 'distributor_id', 'name'); }
+  if (page === 'logistics')      { loadLogistics(); populateOrderSelect(); }
+}
+
+async function populateSelect(id, url, valKey, labelKey) {
+  const sel = document.getElementById(id);
+  const cur = sel.value;
+  try {
+    const rows = await get(url);
+    sel.innerHTML = '<option value="">— Select —</option>';
+    rows.forEach(r => {
+      const o = document.createElement('option');
+      o.value = r[valKey];
+      o.textContent = r[labelKey];
+      sel.appendChild(o);
+    });
+    if (cur) sel.value = cur;
+  } catch(e) {}
+}
+
+async function populateOrderSelect() {
+  const sel = document.getElementById('log-order');
+  try {
+    const rows = await get('/api/orders');
+    sel.innerHTML = '<option value="">— Select —</option>';
+    rows.forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.order_id;
+      o.textContent = `#${r.order_id} — ${r.product_name} (${r.quantity} units)`;
+      sel.appendChild(o);
+    });
+  } catch(e) {}
+}
+
+async function get(url) {
+  const r = await fetch(API + url);
+  return r.json();
+}
+async function post(url, body) {
+  const r = await fetch(API + url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  return r.json();
+}
+async function del(url) {
+  const r = await fetch(API + url, { method: 'DELETE' });
+  return r.json();
+}
+
+async function checkDB() {
+  const el = document.getElementById('db-status');
+  try {
+    const r = await get('/api/health');
+    el.textContent = '● MySQL Connected';
+    el.className = 'ok';
+  } catch(e) {
+    el.textContent = '● DB Offline';
+    el.className = 'err';
+  }
+}
+
+function statusBadge(s) {
+  if (!s) return '<span class="badge badge-yellow">—</span>';
+  const map = { 'Delivered':'badge-green', 'In Transit':'badge-blue', 'Pending':'badge-yellow', 'Cancelled':'badge-red' };
+  return `<span class="badge ${map[s]||'badge-yellow'}">${s}</span>`;
+}
+
+function render(tbodyId, rows, cols) {
+  const tb = document.querySelector(`#${tbodyId} tbody`);
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="${cols}" class="empty">No records found</td></tr>`; return; }
+  tb.innerHTML = rows.map(r => `<tr>${cols.map(c => `<td>${c(r)}</td>`).join('')}</tr>`).join('');
+}
+
+async function loadDashboard() {
+  const [sups, prods, ords, lowstock, fulfillment] = await Promise.all([
+    get('/api/suppliers'), get('/api/products'), get('/api/orders'),
+    get('/api/analytics/low-stock'), get('/api/analytics/fulfillment')
+  ]);
+
+  document.getElementById('stat-suppliers').textContent = sups.length;
+  document.getElementById('stat-products').textContent  = prods.length;
+  document.getElementById('stat-orders').textContent    = ords.length;
+  document.getElementById('stat-lowstock').textContent  = lowstock.length;
+
+  render('tbl-lowstock', lowstock, [
+    r => r.product_name,
+    r => `<span class="${r.quantity < 10 ? 'qty-low' : 'qty-ok'}">${r.quantity}</span>`,
+    r => r.location
+  ]);
+
+  render('tbl-fulfillment', fulfillment, [
+    r => `<code>#${r.order_id}</code>`,
+    r => r.product_name,
+    r => r.distributor_name,
+    r => r.quantity,
+    r => r.order_date ? r.order_date.split('T')[0] : '—',
+    r => r.transport_mode || '—',
+    r => r.cost ? `₹${Number(r.cost).toLocaleString()}` : '—',
+    r => statusBadge(r.delivery_status)
+  ]);
+}
+
+async function loadAnalytics() {
+  const [dist, transport] = await Promise.all([
+    get('/api/analytics/orders-by-distributor'),
+    get('/api/analytics/transport-cost')
+  ]);
+
+  const maxDist = Math.max(...dist.map(r => r.total_orders), 1);
+  const colors = ['#58a6ff','#3fb950','#e3b341','#f78166','#d2a8ff'];
+  document.getElementById('chart-dist').innerHTML = dist.map((r,i) => `
+    <div class="bar-row">
+      <div class="bar-label">${r.distributor_name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(r.total_orders/maxDist*100).toFixed(1)}%;background:${colors[i%colors.length]}"></div></div>
+      <div class="bar-val">${r.total_orders} units</div>
+    </div>`).join('') || '<p class="empty">No data</p>';
+
+  const maxCost = Math.max(...transport.map(r => r.total_cost), 1);
+  document.getElementById('chart-transport').innerHTML = transport.map((r,i) => `
+    <div class="bar-row">
+      <div class="bar-label">${r.transport_mode} (${r.shipments})</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(r.total_cost/maxCost*100).toFixed(1)}%;background:${colors[i%colors.length]}"></div></div>
+      <div class="bar-val">₹${Number(r.total_cost).toLocaleString()}</div>
+    </div>`).join('') || '<p class="empty">No data</p>';
+}
+
+async function loadSuppliers() {
+  const rows = await get('/api/suppliers');
+  render('tbl-suppliers', rows, [
+    r => r.supplier_id, r => r.name, r => r.contact||'—', r => r.city||'—',
+    r => `<button class="btn btn-danger btn-sm" onclick="delSupplier(${r.supplier_id})">Delete</button>`
+  ]);
+}
+async function addSupplier() {
+  const name = document.getElementById('sup-name').value.trim();
+  if (!name) return toast('Name is required', 'error');
+  const contact = document.getElementById('sup-contact').value.trim();
+  const city    = document.getElementById('sup-city').value.trim();
+  const r = await post('/api/suppliers', { name, contact, city });
+  if (r.error) return toast(r.error, 'error');
+  toast(`Supplier "${name}" added!`);
+  ['sup-name','sup-contact','sup-city'].forEach(id => document.getElementById(id).value = '');
+  loadSuppliers();
+}
+async function delSupplier(id) {
+  if (!confirm('Delete this supplier?')) return;
+  const r = await del(`/api/suppliers/${id}`);
+  if (r.error) return toast(r.error, 'error');
+  toast('Supplier deleted'); loadSuppliers();
+}
+
+async function loadManufacturers() {
+  const rows = await get('/api/manufacturers');
+  render('tbl-manufacturers', rows, [
+    r => r.manufacturer_id, r => r.name, r => r.location||'—',
+    r => `<button class="btn btn-danger btn-sm" onclick="delManufacturer(${r.manufacturer_id})">Delete</button>`
+  ]);
+}
+async function addManufacturer() {
+  const name = document.getElementById('mfr-name').value.trim();
+  if (!name) return toast('Name is required', 'error');
+  const location = document.getElementById('mfr-location').value.trim();
+  const r = await post('/api/manufacturers', { name, location });
+  if (r.error) return toast(r.error, 'error');
+  toast(`Manufacturer "${name}" added!`);
+  ['mfr-name','mfr-location'].forEach(id => document.getElementById(id).value = '');
+  loadManufacturers();
+}
+async function delManufacturer(id) {
+  if (!confirm('Delete this manufacturer?')) return;
+  const r = await del(`/api/manufacturers/${id}`);
+  if (r.error) return toast(r.error, 'error');
+  toast('Manufacturer deleted'); loadManufacturers();
+}
+
+async function loadDistributors() {
+  const rows = await get('/api/distributors');
+  render('tbl-distributors', rows, [
+    r => r.distributor_id, r => r.name, r => r.region||'—',
+    r => `<button class="btn btn-danger btn-sm" onclick="delDistributor(${r.distributor_id})">Delete</button>`
+  ]);
+}
+async function addDistributor() {
+  const name = document.getElementById('dist-name').value.trim();
+  if (!name) return toast('Name is required', 'error');
+  const region = document.getElementById('dist-region').value.trim();
+  const r = await post('/api/distributors', { name, region });
+  if (r.error) return toast(r.error, 'error');
+  toast(`Distributor "${name}" added!`);
+  ['dist-name','dist-region'].forEach(id => document.getElementById(id).value = '');
+  loadDistributors();
+}
+async function delDistributor(id) {
+  if (!confirm('Delete this distributor?')) return;
+  const r = await del(`/api/distributors/${id}`);
+  if (r.error) return toast(r.error, 'error');
+  toast('Distributor deleted'); loadDistributors();
+}
+
+async function loadProducts() {
+  const rows = await get('/api/products');
+  render('tbl-products', rows, [
+    r => r.product_id, r => r.name, r => r.manufacturer_name||'—',
+    r => `<button class="btn btn-danger btn-sm" onclick="delProduct(${r.product_id})">Delete</button>`
+  ]);
+}
+async function addProduct() {
+  const name = document.getElementById('prod-name').value.trim();
+  const manufacturer_id = document.getElementById('prod-mfr').value;
+  if (!name) return toast('Name is required', 'error');
+  const r = await post('/api/products', { name, manufacturer_id: manufacturer_id || null });
+  if (r.error) return toast(r.error, 'error');
+  toast(`Product "${name}" added!`);
+  document.getElementById('prod-name').value = '';
+  loadProducts();
+}
+async function delProduct(id) {
+  if (!confirm('Delete this product?')) return;
+  const r = await del(`/api/products/${id}`);
+  if (r.error) return toast(r.error, 'error');
+  toast('Product deleted'); loadProducts();
+}
+
+async function loadInventory() {
+  const rows = await get('/api/inventory');
+  render('tbl-inventory', rows, [
+    r => r.inventory_id, r => r.product_name,
+    r => `<span class="${r.quantity < 50 ? 'qty-low' : 'qty-ok'}">${r.quantity} ${r.quantity < 50 ? '⚠' : ''}</span>`,
+    r => r.location||'—',
+    r => `<button class="btn btn-danger btn-sm" onclick="delInventory(${r.inventory_id})">Delete</button>`
+  ]);
+}
+async function addInventory() {
+  const product_id = document.getElementById('inv-prod').value;
+  const quantity   = document.getElementById('inv-qty').value;
+  const location   = document.getElementById('inv-loc').value.trim();
+  if (!product_id || !quantity) return toast('Product and Quantity are required', 'error');
+  const r = await post('/api/inventory', { product_id, quantity: Number(quantity), location });
+  if (r.error) return toast(r.error, 'error');
+  toast('Inventory record added!');
+  document.getElementById('inv-qty').value = '';
+  document.getElementById('inv-loc').value = '';
+  loadInventory();
+}
+async function delInventory(id) {
+  if (!confirm('Delete this record?')) return;
+  const r = await del(`/api/inventory/${id}`);
+  if (r.error) return toast(r.error, 'error');
+  toast('Record deleted'); loadInventory();
+}
+
+async function loadOrders() {
+  const rows = await get('/api/orders');
+  render('tbl-orders', rows, [
+    r => `<code>#${r.order_id}</code>`, r => r.product_name, r => r.distributor_name,
+    r => r.quantity,
+    r => r.order_date ? r.order_date.split('T')[0] : '—',
+    r => `<button class="btn btn-danger btn-sm" onclick="delOrder(${r.order_id})">Delete</button>`
+  ]);
+}
+async function addOrder() {
+  const product_id     = document.getElementById('ord-prod').value;
+  const distributor_id = document.getElementById('ord-dist').value;
+  const quantity       = document.getElementById('ord-qty').value;
+  const order_date     = document.getElementById('ord-date').value;
+  if (!product_id || !distributor_id || !quantity || !order_date)
+    return toast('All fields are required', 'error');
+  const r = await post('/api/orders', { product_id, distributor_id, quantity: Number(quantity), order_date });
+  if (r.error) return toast(r.error, 'error');
+  toast('Order placed!');
+  ['ord-qty','ord-date'].forEach(id => document.getElementById(id).value = '');
+  loadOrders();
+}
+async function delOrder(id) {
+  if (!confirm('Delete this order?')) return;
+  const r = await del(`/api/orders/${id}`);
+  if (r.error) return toast(r.error, 'error');
+  toast('Order deleted'); loadOrders();
+}
+
+async function loadLogistics() {
+  const rows = await get('/api/logistics');
+  render('tbl-logistics', rows, [
+    r => r.logistics_id,
+    r => `<code>#${r.order_id}</code>`,
+    r => r.product_name,
+    r => r.transport_mode,
+    r => `₹${Number(r.cost).toLocaleString()}`,
+    r => statusBadge(r.delivery_status),
+    r => `<button class="btn btn-danger btn-sm" onclick="delLogistics(${r.logistics_id})">Delete</button>`
+  ]);
+}
+async function addLogistics() {
+  const order_id       = document.getElementById('log-order').value;
+  const transport_mode = document.getElementById('log-mode').value;
+  const cost           = document.getElementById('log-cost').value;
+  const delivery_status = document.getElementById('log-status').value;
+  if (!order_id || !cost) return toast('Order and Cost are required', 'error');
+  const r = await post('/api/logistics', { order_id, transport_mode, cost: Number(cost), delivery_status });
+  if (r.error) return toast(r.error, 'error');
+  toast('Logistics entry added!');
+  document.getElementById('log-cost').value = '';
+  loadLogistics();
+}
+async function delLogistics(id) {
+  if (!confirm('Delete this entry?')) return;
+  const r = await del(`/api/logistics/${id}`);
+  if (r.error) return toast(r.error, 'error');
+  toast('Entry deleted'); loadLogistics();
+}
+
+checkDB();
+loadDashboard();
+document.getElementById('ord-date').valueAsDate = new Date();
+</script>
+</body>
+</html>
