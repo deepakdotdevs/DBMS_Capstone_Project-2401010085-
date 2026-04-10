@@ -2,8 +2,10 @@
   "name": "supply-chain",
   "version": "1.0.0",
   "description": "",
-  "main": "indexx.js",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
