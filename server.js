@@ -10,11 +10,11 @@ app.use(bp.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const db = mysql2.createConnection({
-  host:     process.env.DB_HOST || 'localhost',
-  user:     process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'dee@pak.com',
-  database: process.env.DB_NAME || 'supply_chain_db',
-  port:     process.env.DB_PORT || 3306
+  host:     process.env.MYSQLHOST || 'localhost',
+  user:     process.env.MYSQLUSER || 'root',
+  password: process.env.MYSQLPASSWORD || 'dee@pak.com',
+  database: process.env.MYSQLDATABASE || 'supply_chain_db',
+  port:     process.env.MYSQLPORT || 3306
 });
 
 db.connect(err => {
